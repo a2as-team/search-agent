@@ -1,0 +1,83 @@
+manifest:
+  version: "0.1.3"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: fmind/search-agent
+    source: https://github.com/fmind/search-agent
+    branch: main
+    commit: "2eef48c7"
+    scope: [search_agent/agent.py, user_agent/agent.py]
+  issued:
+    by: A2AS.org
+    at: '2026-02-11T16:45:29Z'
+    url: https://a2as.org/certified/agents/fmind/search-agent
+  signatures:
+    digest: sha256:-fqVq3ZR3OXI28B7dlkjWeCCNiLsoAOy4ZJdIOcpS-Y
+    key: ed25519:bez-byVarQoWsgPoM-4Hm5WtfImZ9hi-Hr3anbX0tBg
+    sig: ed25519:-Qd8BFPW-Rn10EEhaxuxLW-hgpKvPrAW1Rdv37F0osHeo6kJFtO_2S_BTZoo-5TAOUhpMJPGFMdF9UBu6UVkAA
+
+agents:
+  root_agent.0:
+    type: instance
+    models: [gemini-2.5-flash]
+    tools: [google_search]
+    params:
+      name: search_agent
+      description: Agent to answer questions using Google Search.
+      instruction: [You are an expert researcher. You always stick to the facts.]
+      instance: root_agent
+  root_agent.1:
+    type: instance
+    models: [gemini-2.5-flash]
+    params:
+      name: root_agent
+      instruction: [You are a nice and polite agent. Deleguate search query to the search_agent.]
+      instance: root_agent
+      sub_agents: [search_agent]
+
+models:
+  gemini-2.5-flash:
+    type: literal
+    agents: [root_agent.0, root_agent.1]
+
+tools:
+  google_search:
+    type: module
+    agents: [root_agent.0]
+
+teams:
+  root_agent.1:
+    type: hierarchy
+    agents: [root_agent.1, search_agent]
+
+imports:
+  agent: agent
+  Agent: google.adk.agents.llm_agent.Agent
+  AGENT_CARD_WELL_KNOWN_PATH: google.adk.agents.remote_a2a_agent.AGENT_CARD_WELL_KNOWN_PATH
+  auth: google.auth
+  datetime: datetime
+  google_search: google.adk.tools.google_search
+  httpx: httpx
+  iam_credentials_v1: google.cloud.iam_credentials_v1
+  json: json
+  os: os
+  RemoteA2aAgent: google.adk.agents.remote_a2a_agent.RemoteA2aAgent
+
+functions:
+  auth_flow:
+    type: sync
+    module: user_agent.agent
+    args: [self, request]
+  get_auth_token:
+    type: sync
+    module: user_agent.agent
+    args: [url, exp]
+    params:
+      returns: str
+
+variables:
+  AGENT_CARD:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [user_agent.agent]
